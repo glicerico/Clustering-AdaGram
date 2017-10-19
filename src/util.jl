@@ -42,8 +42,7 @@ end
 # Added embeddings_flag to write to file the embedding vectors of the words (for visualization purposes).
 function clarkCluster(vm::VectorModel, dict::Dictionary, outputFile::AbstractString;
 	    K::Integer=15, min_prob=1e-2, termination_fraction=0.8, merging_threshold=0.9,
-        fraction_increase=0.05, tag_flag = false, dict_path = "null", min_freq = 1, 
-        embeddings_flag = false, embeddings_filename = "embeddings.dat")
+        fraction_increase=0.05, embeddings_flag=false, embeddings_filename="embeddings.dat")
     embeddings = [] # non-normalized embeddings
     wordVectors = []
     senses = Int64[]
@@ -58,59 +57,6 @@ function clarkCluster(vm::VectorModel, dict::Dictionary, outputFile::AbstractStr
         #currentCenter /= length(clusters[currentCluster]) # averages the centers of every member of the class
         currentCenter /= norm(currentCenter) # normalizes the center vector
         return currentCenter
-    end
-
-    # Creates a dictionary that will store each word root in the
-    # dict_path provided, with its different tags
-    # and corresponding frequency ranking
-    function loadTaggedDict(dict_path::AbstractString, min_freq::Int)
-        wordDict = Dict()
-        fi = open(dict_path, "r")
-        while !eof(fi)
-            line = split(readline(fi))
-            sense = line[1]
-            senseFreq = parse(Int, line[2])
-
-            # only stores words that occur at least min-freq times
-            if senseFreq >= min_freq
-                # look for the tag
-                splitWord = rsplit(UTF8String(sense), "[", limit = 2)
-                taggedPart = rsplit(UTF8String(splitWord[end]), ".", limit = 2)
-                #finalTaggedPart = rsplit(UTF8String(taggedPart[end]), "#", limit = 2)
-
-                if length(taggedPart) > 1
-                #    tag = finalTaggedPart[end]
-                    tag = taggedPart[end]
-                else
-                    tag = "untagged"
-                end
-                # look for the root word
-                if length(splitWord) > 1
-                    wordKey = splitWord[1]
-                else
-                    wordKey = taggedPart[1]
-                end
-
-                if !haskey(wordDict, wordKey)
-                    wordDict[wordKey] = []
-                end
-                push!(wordDict[wordKey], [tag, senseFreq])
-            end
-        end
-
-        # calculates frequency ranking of tag compared to other
-        # tags for the same word
-        for iEntry in wordDict
-            suma = 0
-            for iValue in iEntry[2]
-                suma += iValue[2]
-            end
-            for iValue in iEntry[2]
-                iValue[2] /= suma
-            end
-        end
-        close(fi)
-        return wordDict
     end
 
     ###########################################
@@ -216,75 +162,28 @@ function clarkCluster(vm::VectorModel, dict::Dictionary, outputFile::AbstractStr
 
     # write results to file(s)
     fo = open(outputFile, "w")
-    # different routes if words must be tagged or not
-    if tag_flag
-        counterNotFound = 0
-        println("Writing tagged clusters file")
-        wordDict = loadTaggedDict(dict_path, min_freq)
+    @printf(fo, "Word\tClusterNbr\n")
+    # decides if write embeddings or not
+    if embeddings_flag
+        fEmbeddings = open(embeddings_filename, "w")
+        # write to specified output file
+        println("Writing clusters file")
         for iCluster in 1:length(clusters)
             for iMember in 1:length(clusters[iCluster])
-                wordId = senses[clusters[iCluster][iMember]] 
-                word = dict.id2word[wordId]
-                notFound = false
-
-                # ranks the sense relative to the total word count
-                senseFreq = senseFrequencies[clusters[iCluster][iMember]]
-                senseRank = senseFreq / vm.frequencies[wordId]
-
-                if !haskey(wordDict, word)
-                    # try to find lowercase version
-                    word = string(lowercase(word[1]), word[2:end])
-                    if !haskey(wordDict, word)
-                        #println("$word not found in dictionary")
-                        counterNotFound += 1
-                        notFound = true
-                    end
+                @printf(fo, "%s\t%d\n", dict.id2word[senses[clusters[iCluster][iMember]]], iCluster)
+                for iDim in 1:M(vm)
+                    @printf(fEmbeddings, "%f ", embeddings[clusters[iCluster][iMember]][iDim])
                 end
-                if !notFound
-                    # compares sense rank to the rank of the tags for the word
-                    # to assign most adequate tag
-                    arrayTags = wordDict[word]
-                    rankDistance = Inf
-                    tag = "" # just to avoid UndefVarError
-                    for iTag in arrayTags
-                        currentDistance = abs(iTag[2] - senseRank) 
-                        if currentDistance < rankDistance
-                            rankDistance = currentDistance
-                            tag = iTag[1]
-                        end
-                    end
-                    taggedWord = string(word, ".", tag)
-                else 
-                    taggedWord = string(word, ".", "notFound")
-                end
-                @printf(fo, "%s\t%d\n", taggedWord, iCluster)
+                @printf(fEmbeddings, "\n")
             end
         end
-        println("$counterNotFound words not found in dictionary")
+        close(fEmbeddings)
     else
-        @printf(fo, "Word\tClusterNbr\n")
-        # decides if write embeddings or not
-        if embeddings_flag
-            fEmbeddings = open(embeddings_filename, "w")
-            # write to specified output file
-            println("Writing clusters file")
-            for iCluster in 1:length(clusters)
-                for iMember in 1:length(clusters[iCluster])
-                    @printf(fo, "%s\t%d\n", dict.id2word[senses[clusters[iCluster][iMember]]], iCluster)
-                    for iDim in 1:M(vm)
-                        @printf(fEmbeddings, "%f ", embeddings[clusters[iCluster][iMember]][iDim])
-                    end
-                    @printf(fEmbeddings, "\n")
-                end
-            end
-            close(fEmbeddings)
-        else
-            # write to specified output file
-            println("Writing clusters file")
-            for iCluster in 1:length(clusters)
-                for iMember in 1:length(clusters[iCluster])
-                    @printf(fo, "%s\t%d\n", dict.id2word[senses[clusters[iCluster][iMember]]], iCluster)
-                end
+        # write to specified output file
+        println("Writing clusters file")
+        for iCluster in 1:length(clusters)
+            for iMember in 1:length(clusters[iCluster])
+                @printf(fo, "%s\t%d\n", dict.id2word[senses[clusters[iCluster][iMember]]], iCluster)
             end
         end
     end
