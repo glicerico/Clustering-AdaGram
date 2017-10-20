@@ -156,7 +156,8 @@ function clarkCluster(vm::VectorModel, dict::Dictionary, outputFile::AbstractStr
     push!(clusters, orderDistance[numClusteredSenses + 1:end])
     println("Cluster size percentage:")
     for i in 1:K + 1
-        @printf("%0.2f ", length(clusters[i])/numSenses * 100)
+        @printf("%3d: ", i)
+        @printf("%0.2f; ", length(clusters[i])/numSenses * 100)
     end
     @printf("\n")
 

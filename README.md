@@ -1,25 +1,38 @@
 # Clustering-AdaGram
-Clustering algorithm for AdaGram models
+Clustering-AdaGram is a Julia-implemented clustering algorithm for AdaGram models.
+It's a modified K-means clustering routine for AdaGram models, inspired by Clark's[1] clustering algorithm.
+The modified K-means algorithm iteratively classifies only a fraction of the total word senses (the fraction that is cosine-distance closer to their closest cluster), using their embedding vectors. Clusters are merged when
+their center's cosine-distance is higher than a specified threshold.
 
-Modified K-means clustering routine for AdaGram models, inspired by Clark's[1] clustering algorithm.
-The modified K-means algorithm classifies only the "termination_fraction" fraction of the total word senses (the ones cosine-distance closer to their closest cluster), using their embedding vectors. Clusters are merged when
-their center's cosine-distance is lower than "merging_threshold".
+## Installation
+
+Clustering-AdaGram has been tested in Julia v0.4.5; it should be installed in the following way:
 ```
-function clarkClustering(vm::VectorModel, dict::Dictionary, outputFile::AbstractString;
-	    K::Integer=100, min_prob=1e-2, termination_fraction=0.8, merging_threshold=0.9,
-        fraction_increase=0.05, embeddings_flag=false, embeddings_filename="embeddings.dat")
+Pkg.clone("https://github.com/glicerico/Clustering-AdaGram.git")
+Pkg.build("Clustering-AdaGram")
 ```
-The parameters are:
-* vm: trained adagram vector model to use
-* dict: dictionary structure to use
-* outputFile: name to assign to output file
-Optional keyword paramenters:
-* K is the number of clusters to be obtained
-* min_prob specifies the minimum probability that a sense needs to have to be considered for clustering
-* termination_fraction is the percentage of all the word senses that will be clustered
-* merging_threshold specifies how close (cosine distance) the centers of two clusters need to be to be merged into one cluster
-* fraction_increase determines the percentage increase of words to be clustered in each iteration
-* embeddings_flag determines if the embedding vectors for the model's senses will be written to file
-* embeddings_filename determines the name of the file to write the model's embedding vectors
+
+## Clustering an AdaGram model
+
+The most straightforward way to cluster a model is to use `classify.sh` script. If you run it with no parameters passed or with `--help` option, it will print usage information:
+```
+usage: classify.jl [--k K] [--min-prob MIN-PROB]
+                   [--termination-fraction TERMINATION-FRACTION]
+                   [--merging-threshold MERGING-THRESHOLD]
+                   [--fraction-increase FRACTION-INCREASE]
+                   [--embeddings-flag]
+                   [--embeddings-filename EMBEDDINGS-FILENAME] input
+                   output
+```
+Here is the description of all parameters:
+* K: number of clusters to use in modified k-means
+* MIN_PROB: minimum probability that a sense needs to have to be considered for clustering
+* TERMINATION_FRACTION: percentage of all the word senses that will be clustered
+* MERGING_THRESHOLD: how close the centers of two clusters need to be to be merged into one cluster. If their cosine-distance is higher than this, they merge.
+* FRACTION_INCREASE: percentage increase of fraction of words to be clustered in each iteration.
+* embeddings_flag: allows to write to file the embedding vectors for the model's senses, for visualization purposes.
+* EMBEDDINGS_FILENAME: name of the file to write the model's embedding vectors
+* input: AdaGram model to use
+* output: name of clustered output file
 
 [1] Clark, 2000: http://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.480.9220&rep=rep1&type=pdf
