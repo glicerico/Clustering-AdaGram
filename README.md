@@ -36,3 +36,19 @@ Here is the description of all parameters:
 * output: name of clustered output file
 
 [1] Clark, 2000: http://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.480.9220&rep=rep1&type=pdf
+
+## Generating word embeddings to visualize
+Instructions for using TensorBoard to visualize word embeddings and, optionally, their clustering
+
+\begin{itemize}
+    \item You need to have a trained AdaGram model (either regular AdaGram or AdaGramWP, does not matter as both processes produce a model with the same format).
+
+    \item Install TensorFlow. Follow steps for Ubuntu install in the following link. I used virtualenv installation in directory $\sim$/tensorflow:\\
+    https://www.tensorflow.org/install/install\_linux
+
+    \item Perform clustering to get word embedding vectors: run Clustering\_AdaGram on AdaGram model with preferred parameters and keyword argument embeddings\_flag=true (and optionally with keyword argument embeddings\_filename)
+    \item From folder where embeddings are stored, run:
+    visualizeEmbeddings.sh -i EMBEDDINGS\_FILE [-m CLUSTERS\_FILE]
+    \item Open web browser and go to localhost:6006, then choose the Embeddings or Projector tab.
+
+\end{itemize}
